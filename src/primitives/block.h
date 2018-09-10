@@ -26,8 +26,7 @@ class CBlockHeader : public CPureBlockHeader
 public:
 
     // auxpow (if this is a merge-minded block)
-    boost::shared_ptr<CDefaultAuxPow> auxpowdefault;
-    boost::shared_ptr<CEquihashAuxPow> auxpowequihash;
+    boost::shared_ptr<CAuxPow> auxpow;
 
     CBlockHeader()
     {
@@ -38,37 +37,22 @@ public:
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
-        READWRITE(*(CPureBlockHeader*)this);
+        READWRITE(*static_cast<CPureBlockHeader*>(this));
         
-        if(this->GetAlgo() == ALGO_EQUIHASH)
+        if (this->IsAuxpow())
         {
-            if (this->IsAuxpow())
-            {
-                if (ser_action.ForRead())
-                    auxpowequihash.reset (new CEquihashAuxPow());
-                assert(auxpowequihash);
-                READWRITE(*auxpowequihash);
-            } else if (ser_action.ForRead())
-                auxpowequihash.reset(); 
-        }
-        else
-        {
-            if (this->IsAuxpow())
-            {
-                if (ser_action.ForRead())
-                    auxpowdefault.reset (new CDefaultAuxPow());
-                assert(auxpowdefault);
-                READWRITE(*auxpowdefault);
-            } else if (ser_action.ForRead())
-                auxpowdefault.reset(); 
-        }
+            if (ser_action.ForRead())
+                auxpow.reset (new CAuxPow());
+            assert(auxpow);
+            READWRITE(*auxpow);
+        } else if (ser_action.ForRead())
+            auxpow.reset();
     }
 
     void SetNull()
     {
         CPureBlockHeader::SetNull();
-        auxpowdefault.reset();
-        auxpowequihash.reset();
+        auxpow.reset();
     }
 
     /**
@@ -76,8 +60,7 @@ public:
      * the version accordingly.
      * @param apow Pointer to the auxpow to use or NULL.
      */
-    void SetAuxpow (CDefaultAuxPow* apow);
-    void SetAuxpow (CEquihashAuxPow* apow);
+    void SetAuxpow (CAuxPow* apow);
 };
 
 
@@ -88,6 +71,7 @@ public:
     std::vector<CTransactionRef> vtx;
 
     // memory only
+    mutable CTxOut txoutMasternode; // masternode payment
     mutable bool fChecked;
 
     CBlock()
@@ -113,6 +97,7 @@ public:
     {
         CBlockHeader::SetNull();
         vtx.clear();
+        txoutMasternode = CTxOut();
         fChecked = false;
     }
 
@@ -128,8 +113,7 @@ public:
         block.nNonce         = nNonce;
         block.nBigNonce      = nBigNonce;
         block.nSolution      = nSolution;
-        block.auxpowdefault  = auxpowdefault;
-        block.auxpowequihash = auxpowequihash;
+        block.auxpow         = auxpow;
         return block;
     }
 

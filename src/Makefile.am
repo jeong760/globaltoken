@@ -80,6 +80,7 @@ endif
 # globaltoken core #
 BITCOIN_CORE_H = \
   addrdb.h \
+  activemasternode.h \
   addrman.h \
   auxpow.h \
   base58.h \
@@ -104,22 +105,33 @@ BITCOIN_CORE_H = \
   core_io.h \
   core_memusage.h \
   cuckoocache.h \
+  flat-database.h \
   fs.h \
+  gltnotificationinterface.h \
   httprpc.h \
   httpserver.h \
   indirectmap.h \
   init.h \
+  instantx.h \
   key.h \
   keystore.h \
   dbwrapper.h \
   limitedmap.h \
+  masternode.h \
+  masternode-helper.h \
+  masternode-payments.h \
+  masternode-sync.h \
+  masternodeman.h \
+  masternodeconfig.h \
   memusage.h \
   merkleblock.h \
+  messagesigner.h \
   miner.h \
   net.h \
   net_processing.h \
   netaddress.h \
   netbase.h \
+  netfulfilledman.h \
   netmessagemaker.h \
   noui.h \
   policy/feerate.h \
@@ -145,6 +157,7 @@ BITCOIN_CORE_H = \
   script/sigcache.h \
   script/sign.h \
   script/standard.h \
+  spork.h \
   streams.h \
   support/allocators/secure.h \
   support/allocators/zeroafterfree.h \
@@ -193,6 +206,7 @@ libbitcoin_util_a-clientversion.$(OBJEXT): obj/build.h
 libbitcoin_server_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES) $(MINIUPNPC_CPPFLAGS) $(EVENT_CFLAGS) $(EVENT_PTHREADS_CFLAGS) $(SCRYPT_FLAGS)
 libbitcoin_server_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_server_a_SOURCES = \
+  activemasternode.cpp \
   addrdb.cpp \
   addrman.cpp \
   bloom.cpp \
@@ -200,13 +214,23 @@ libbitcoin_server_a_SOURCES = \
   chain.cpp \
   checkpoints.cpp \
   consensus/tx_verify.cpp \
+  gltnotificationinterface.cpp \
   httprpc.cpp \
   httpserver.cpp \
   init.cpp \
+  instantx.cpp \
   dbwrapper.cpp \
+  masternode.cpp \
+  masternode-helper.cpp \
+  masternode-payments.cpp \
+  masternode-sync.cpp \
+  masternodeconfig.cpp \
+  masternodeman.cpp \
   merkleblock.cpp \
+  messagesigner.cpp \
   miner.cpp \
   net.cpp \
+  netfulfilledman.cpp \
   net_processing.cpp \
   noui.cpp \
   policy/fees.cpp \
@@ -215,6 +239,7 @@ libbitcoin_server_a_SOURCES = \
   pow.cpp \
   rest.cpp \
   rpc/blockchain.cpp \
+  rpc/masternode.cpp \
   rpc/mining.cpp \
   rpc/misc.cpp \
   rpc/net.cpp \
@@ -222,6 +247,7 @@ libbitcoin_server_a_SOURCES = \
   rpc/safemode.cpp \
   rpc/server.cpp \
   script/sigcache.cpp \
+  spork.cpp \
   timedata.cpp \
   torcontrol.cpp \
   txdb.cpp \
@@ -296,6 +322,7 @@ crypto_algos_libglobaltoken_algos_a_SOURCES = \
   crypto/algos/hashlib/cubehash.c \
   crypto/algos/hashlib/echo.c \
   crypto/algos/hashlib/fugue.c \
+  crypto/algos/hashlib/gost.c \
   crypto/algos/hashlib/groestl.c \
   crypto/algos/hashlib/hamsi.c \
   crypto/algos/hashlib/haval.c \
@@ -312,6 +339,7 @@ crypto_algos_libglobaltoken_algos_a_SOURCES = \
   crypto/algos/hashlib/sph_cubehash.h \
   crypto/algos/hashlib/sph_echo.h \
   crypto/algos/hashlib/sph_fugue.h \
+  crypto/algos/hashlib/sph_gost.h \
   crypto/algos/hashlib/sph_groestl.h \
   crypto/algos/hashlib/sph_hamsi.h \
   crypto/algos/hashlib/sph_haval.h \
@@ -328,6 +356,17 @@ crypto_algos_libglobaltoken_algos_a_SOURCES = \
   crypto/algos/hashlib/whirlpool.c \
   crypto/algos/hashlib/aes_helper.c \
   crypto/algos/hashlib/multihash.h \
+  crypto/algos/Lyra2RE/Lyra2.c \
+  crypto/algos/Lyra2RE/Lyra2.h \
+  crypto/algos/Lyra2RE/Lyra2RE.c \
+  crypto/algos/Lyra2RE/Lyra2RE.h \
+  crypto/algos/Lyra2RE/Sponge.c \
+  crypto/algos/Lyra2RE/Sponge.h \
+  crypto/algos/blake/blake2.h \
+  crypto/algos/blake/blake2-impl.h \
+  crypto/algos/blake/blake2b-ref.c \
+  crypto/algos/blake/blake2s-ref.c \
+  crypto/algos/blake/hashblake.h \
   crypto/algos/neoscrypt/neoscrypt.c \
   crypto/algos/neoscrypt/neoscrypt.h \
   crypto/algos/scrypt/scrypt.cpp \
@@ -336,6 +375,7 @@ crypto_algos_libglobaltoken_algos_a_SOURCES = \
   crypto/algos/equihash/equihash.cpp \
   crypto/algos/equihash/equihash.h \
   crypto/algos/equihash/equihash.tcc \
+  crypto/algos/equihash/equihash_params.h \
   crypto/algos/yescrypt/sha256_Y.c \
   crypto/algos/yescrypt/sha256_Y.h \
   crypto/algos/yescrypt/sysendian.h \

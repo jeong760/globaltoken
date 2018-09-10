@@ -1,5 +1,6 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2017 The Bitcoin Core developers
+// Copyright (c) 2014-2017 The Dash Core developers
 // Copyright (c) 2017-2018 The Globaltoken Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -86,7 +87,13 @@ public:
     CMainParams() {
         strNetworkID = "main";
         consensus.nSubsidyHalvingInterval = 840000;
+        consensus.nMasternodeMinimumConfirmations = 15;
+        consensus.nMasternodeColleteralPaymentAmount = 50000;
+        consensus.nMasternodePayeeReward = 25;
+        consensus.nInstantSendConfirmationsRequired = 6;
+        consensus.nInstantSendKeepLock = 24;
         consensus.nTreasuryAddressChange = 133920;
+        consensus.nTreasuryAddressChangeStart = 500000;
         consensus.nTreasuryAmount = 15;
         consensus.BIP16Height = 100000;
         consensus.BIP34Height = 299999;
@@ -94,7 +101,7 @@ public:
         consensus.BIP65Height = 380000; // not hashed yet ...
         consensus.BIP66Height = 360000; // not hashed yet ...
         consensus.HardforkHeight = 300000; // not final
-        consensus.HardforkTime = 1533081600;
+        consensus.HardforkTime = 1538395200;
         // not hashed yet ... consensus.HardforkHash = uint256S("0x00");	
         consensus.powLimit_SHA256 = uint256S("00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.powLimit_SCRYPT = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
@@ -105,12 +112,33 @@ public:
         consensus.powLimit_HMQ1725 = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.powLimit_XEVAN = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.powLimit_NIST5 = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_TIMETRAVEL10 = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_PAWELHASH = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_X13 = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_X14 = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_X15 = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_X17 = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_LYRA2RE = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_BLAKE2S = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_BLAKE2B = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_ASTRALHASH = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_PADIHASH = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_JEONGHASH = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_ZHASH = uint256S("0007ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_KECCAK = uint256S("00ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_GLOBALHASH = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_QUBIT = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_SKEIN = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_GROESTL = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_SKUNKHASH = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_QUARK = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_X16R = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.nTargetSpacing = 60; // 1 minute
-        consensus.nTargetTimespan =  60 * 20; // 20 minutes
+        consensus.nTargetTimespan =  60; // 5 minutes
         consensus.nPowTargetTimespan = 10 * 60; // ten minutes
         consensus.nPowTargetSpacing = 60;
         consensus.nPowTargetTimespanV2 = 5 * 60; // just changed to faster retargeting (5 minutes)
-        consensus.nPowTargetSpacingV2 = 60 * 9; // NUM_ALGOS * 60
+        consensus.nPowTargetSpacingV2 = 60 * NUM_ALGOS; // NUM_ALGOS * 60
         consensus.nInterval = consensus.nTargetTimespan / consensus.nTargetSpacing;
         consensus.nAveragingInterval = 5; // 5 blocks
         consensus.nAveragingTargetTimespan = consensus.nAveragingInterval * consensus.nPowTargetSpacingV2;
@@ -158,9 +186,13 @@ public:
         nDefaultPort = 9319;
         nPruneAfterHeight = 750000;
         const size_t N = 200, K = 9;
+        const size_t ZN = 144, ZK = 5;
         BOOST_STATIC_ASSERT(equihash_parameters_acceptable(N, K));
+        BOOST_STATIC_ASSERT(equihash_parameters_acceptable(ZN, ZK));
         nEquihashN = N;
         nEquihashK = K;
+        nZhashN = ZN;
+        nZhashK = ZK;
 
         genesis = CreateGenesisBlock(1480961109, 2864352084, 0x1d00ffff, 1, 100 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
@@ -188,6 +220,11 @@ public:
         fDefaultConsistencyChecks = false;
         fRequireStandard = true;
         fMineBlocksOnDemand = false;
+        fAllowMultiplePorts = false;
+        
+        nFulfilledRequestExpireTime = 60*60; // fulfilled requests expire in 1 hour
+        
+        strSporkAddress = "GP4r6YBda72vWgmK7m9z8JGkq3smhipTYb";
 
         checkpointData = {
             {
@@ -480,7 +517,13 @@ public:
     CTestNetParams() {
         strNetworkID = "test";
         consensus.nSubsidyHalvingInterval = 840000;
+        consensus.nMasternodeMinimumConfirmations = 1;
+        consensus.nMasternodeColleteralPaymentAmount = 12500;
+        consensus.nMasternodePayeeReward = 35;
+        consensus.nInstantSendConfirmationsRequired = 2;
+        consensus.nInstantSendKeepLock = 6;
         consensus.nTreasuryAddressChange = 600000;
+        consensus.nTreasuryAddressChangeStart = 100000;
         consensus.nTreasuryAmount = 15;
         consensus.BIP16Height = 1;
         consensus.BIP34Height = 1;
@@ -488,7 +531,7 @@ public:
         consensus.BIP65Height = 100; // not hashed yet.
         consensus.BIP66Height = 10; // not hashed yet.
         consensus.HardforkHeight = 2999; // not final
-        consensus.HardforkTime = 1533081600;
+        consensus.HardforkTime = 1535781600;
         // not hashed yet ... consensus.HardforkHash = uint256S("0x00");
         consensus.powLimit_SHA256 = uint256S("00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.powLimit_SCRYPT = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
@@ -496,15 +539,36 @@ public:
         consensus.powLimit_NEOSCRYPT = uint256S("00001fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.powLimit_EQUIHASH = uint256S("07ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.powLimit_YESCRYPT = uint256S("0003ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-        consensus.powLimit_HMQ1725 = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_HMQ1725 = uint256S("0000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.powLimit_XEVAN = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.powLimit_NIST5 = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_TIMETRAVEL10 = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_PAWELHASH = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_X13 = uint256S("0000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_X14 = uint256S("0000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_X15 = uint256S("0000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_X17 = uint256S("0000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_LYRA2RE = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_BLAKE2S = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_BLAKE2B = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_ASTRALHASH = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_PADIHASH = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_JEONGHASH = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_ZHASH = uint256S("07ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_KECCAK = uint256S("00ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_GLOBALHASH = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_QUBIT = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_SKEIN = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_GROESTL = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_SKUNKHASH = uint256S("0000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_QUARK = uint256S("0000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_X16R = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.nTargetSpacing = 60; // 1 minute
-        consensus.nTargetTimespan =  60 * 20; // 20 minutes
+        consensus.nTargetTimespan =  60; // 5 minutes
         consensus.nPowTargetTimespan = 10 * 60; // ten minutes
         consensus.nPowTargetSpacing = 60;
         consensus.nPowTargetTimespanV2 = 5 * 60; // just changed to faster retargeting (5 minutes)
-        consensus.nPowTargetSpacingV2 = 60 * 9;
+        consensus.nPowTargetSpacingV2 = 60 * NUM_ALGOS;
         consensus.nInterval = consensus.nTargetTimespan / consensus.nTargetSpacing;
         consensus.nAveragingInterval = 5; // 5 blocks
         consensus.nAveragingTargetTimespan = consensus.nAveragingInterval * consensus.nPowTargetSpacingV2;
@@ -547,9 +611,13 @@ public:
         nDefaultPort = 19319;
         nPruneAfterHeight = 1000;
         const size_t N = 200, K = 9;  // Same as mainchain.
+        const size_t ZN = 144, ZK = 5;  // Same as mainchain.
         BOOST_STATIC_ASSERT(equihash_parameters_acceptable(N, K));
+        BOOST_STATIC_ASSERT(equihash_parameters_acceptable(ZN, ZK));
         nEquihashN = N;
         nEquihashK = K;
+        nZhashN = ZN;
+        nZhashK = ZK;
 
         genesis = CreateGenesisBlock(1480961109, 2864352084, 0x1d00ffff, 1, 100 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
@@ -575,6 +643,11 @@ public:
         fDefaultConsistencyChecks = false;
         fRequireStandard = false;
         fMineBlocksOnDemand = false;
+        fAllowMultiplePorts = false;
+        
+        nFulfilledRequestExpireTime = 5*60; // fulfilled requests expire in 5 minutes
+        
+        strSporkAddress = "mnGzwQeK4FkhQfYGMYKfuXHq29DJN1MVzd";
 
 
         checkpointData = {
@@ -861,7 +934,14 @@ public:
     CRegTestParams() {
         strNetworkID = "regtest";
         consensus.nSubsidyHalvingInterval = 150;
+        consensus.nSubsidyHalvingInterval = 840000;
+        consensus.nMasternodeMinimumConfirmations = 1;
+        consensus.nMasternodeColleteralPaymentAmount = 7500;
+        consensus.nMasternodePayeeReward = 30;
+        consensus.nInstantSendConfirmationsRequired = 2;
+        consensus.nInstantSendKeepLock = 6;
         consensus.nTreasuryAddressChange = 350;
+        consensus.nTreasuryAddressChangeStart = 500;
         consensus.nTreasuryAmount = 10;
         consensus.BIP16Height = 0; // always enforce P2SH BIP16 on regtest
         consensus.BIP34Height = 100000000; // BIP34 has not activated on regtest (far in the future so block v1 are not rejected in tests)
@@ -869,7 +949,7 @@ public:
         consensus.BIP65Height = 1351; // BIP65 activated on regtest (Used in rpc activation tests)
         consensus.BIP66Height = 1251; // BIP66 activated on regtest (Used in rpc activation tests)
         consensus.HardforkHeight = 15; // not final
-        consensus.HardforkTime = 1533081600;
+        consensus.HardforkTime = 1534305600;
         consensus.HardforkHash = uint256(); // there is no hardfork hash for regtest, it will be just activated after height
         consensus.powLimit_SHA256 = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.powLimit_SCRYPT = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
@@ -880,6 +960,27 @@ public:
         consensus.powLimit_HMQ1725 = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.powLimit_XEVAN = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.powLimit_NIST5 = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_TIMETRAVEL10 = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_PAWELHASH = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_X13 = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_X14 = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_X15 = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_X17 = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_LYRA2RE = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_BLAKE2S = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_BLAKE2B = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_ASTRALHASH = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_PADIHASH = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_JEONGHASH = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_ZHASH = uint256S("0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f");
+        consensus.powLimit_KECCAK = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_GLOBALHASH = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_QUBIT = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_SKEIN = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_GROESTL = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_SKUNKHASH = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_QUARK = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit_X16R = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.nPowTargetTimespan = 10 * 60; // ten minutes
         consensus.nPowTargetSpacing = 60;
         consensus.fPowAllowMinDifficultyBlocks = true;
@@ -912,9 +1013,13 @@ public:
         nDefaultPort = 20144;
         nPruneAfterHeight = 1000;
         const size_t N = 48, K = 5;
+        const size_t ZN = 96, ZK = 5;
         BOOST_STATIC_ASSERT(equihash_parameters_acceptable(N, K));
+        BOOST_STATIC_ASSERT(equihash_parameters_acceptable(ZN, ZK));
         nEquihashN = N;
         nEquihashK = K;
+        nZhashN = ZN;
+        nZhashK = ZK;
 
         genesis = CreateGenesisBlock(1480961109, 2, 0x207fffff, 1, 100 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
@@ -927,6 +1032,11 @@ public:
         fDefaultConsistencyChecks = true;
         fRequireStandard = false;
         fMineBlocksOnDemand = true;
+        fAllowMultiplePorts = true;
+        
+        nFulfilledRequestExpireTime = 5*60; // fulfilled requests expire in 5 minutes
+        
+        strSporkAddress = "mqakdpV7YNSnfobctsdSt6GmDzmQTEMois";
 
         checkpointData = {
             {
@@ -1217,6 +1327,13 @@ const CChainParams &Params() {
     return *globalChainParams;
 }
 
+const CChainParams &CreateNetworkParams(const std::string& network) {
+    static std::unique_ptr<CChainParams> networkparams; 
+    networkparams = CreateChainParams(network);
+    assert(networkparams);    
+    return *networkparams;
+}
+
 std::unique_ptr<CChainParams> CreateChainParams(const std::string& chain)
 {
     if (chain == CBaseChainParams::MAIN)
@@ -1236,13 +1353,17 @@ void SelectParams(const std::string& network)
 
 // Index variable i ranges from 0 - (vFoundersRewardAddress.size()-1)
 std::string CChainParams::GetFoundersRewardAddressAtHeight(int nHeight) const {
-    size_t addressChangeInterval = consensus.nTreasuryAddressChange;
-    size_t i = nHeight / addressChangeInterval;
+    int addressChangeInterval = consensus.nTreasuryAddressChange;
+    int addressChangeStartHeight = consensus.nTreasuryAddressChangeStart;
+    int i = (nHeight - addressChangeStartHeight) / addressChangeInterval;
+    
+    if(i <= 0)
+        i = 0;
     
     if(i >= 256)
         i = 256;
     
-    return vFoundersRewardAddress[i];
+    return GetFoundersRewardAddressAtIndex(i);
 }
 
 // The founders reward address is expected to be a multisig (P2SH) address
@@ -1263,6 +1384,16 @@ std::string CChainParams::GetFoundersRewardAddressAtIndex(int i) const {
 CAmount CChainParams::GetTreasuryAmount(CAmount coinAmount) const
 {
     return ((coinAmount / 100) * consensus.nTreasuryAmount);
+}
+
+unsigned int CChainParams::EquihashSolutionWidth(uint8_t nAlgo) const
+{
+    assert(nAlgo == ALGO_EQUIHASH || nAlgo == ALGO_ZHASH);
+    
+    if(nAlgo == ALGO_EQUIHASH)
+        return EhSolutionWidth(EquihashN(), EquihashK());
+    else if(nAlgo == ALGO_ZHASH)
+        return EhSolutionWidth(ZhashN(), ZhashK());
 }
 
 void UpdateVersionBitsParameters(Consensus::DeploymentPos d, int64_t nStartTime, int64_t nTimeout)

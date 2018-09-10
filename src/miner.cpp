@@ -1,5 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2017 The Bitcoin Core developers
+// Copyright (c) 2014-2017 The Dash Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -25,6 +26,8 @@
 #include <timedata.h>
 #include <util.h>
 #include <utilmoneystr.h>
+#include <masternode-payments.h>
+#include <masternode-sync.h>
 #include <validationinterface.h>
 
 #include <algorithm>
@@ -140,6 +143,16 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         error("MultiAlgo is not yet active. Current block timestamp %lu, timestamp multialgo becomes active %lu", currenttime, chainparams.GetConsensus().HardforkTime);
         return nullptr;
     }
+    
+    if(IsHardForkActivated((uint32_t)currenttime) && !gArgs.GetBoolArg("-accepttreasury", false))
+    {
+        int userpercent = 100 - chainparams.GetConsensus().nTreasuryAmount;
+        LogPrintf("Warning (Treasury): You tried to mine a block, but did not agreed to pay the block treasury.\nSince the hardfork, a new network rule is active. The block treasury. Everyone needs to pay now %d%% of the block reward to the developers.\nThe block treasury will be deducted automatically from your mined block, if you mine directly in your wallet.\n", chainparams.GetConsensus().nTreasuryAmount);
+        LogPrintf("Warning (Treasury): If you like to mine GlobalTokens you must agree, that you will just receive %d%% of the block reward. The other %d%% goes to the developers as dev fee.\n", userpercent, chainparams.GetConsensus().nTreasuryAmount);
+        LogPrintf("Warning (Treasury): To agree, you must start the wallet with the -accepttreasury argument or add accepttreasury=1 to your globaltoken.conf file.\n");
+        
+        // Continue and cancel block mining at getblocktemplate / generateblocks
+    }
     const int32_t nChainId = chainparams.GetConsensus().nAuxpowChainId;
     
     pblock->SetBaseVersion(ComputeBlockVersion(pindexPrev, chainparams.GetConsensus()), nChainId);
@@ -174,6 +187,9 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
 
     nLastBlockTx = nBlockTx;
     nLastBlockWeight = nBlockWeight;
+    
+    // Get the current block reward.
+    CAmount blockReward = nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());
 
     // Create coinbase transaction.
     CMutableTransaction coinbaseTx;
@@ -181,17 +197,21 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     coinbaseTx.vin[0].prevout.SetNull();
     coinbaseTx.vout.resize(1);
     coinbaseTx.vout[0].scriptPubKey = scriptPubKeyIn;
-    //coinbaseTx.vout[0].nValue = nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());
-    coinbaseTx.vout[0].nValue = GetBlockSubsidy(nHeight, chainparams.GetConsensus());
+    coinbaseTx.vout[0].nValue = blockReward;
     
     if(IsHardForkActivated(pblock->nTime))
     {
-        CAmount nTreasuryAmount = chainparams.GetTreasuryAmount(coinbaseTx.vout[0].nValue);
+        CAmount nTreasuryAmount = chainparams.GetTreasuryAmount(blockReward);
         coinbaseTx.vout[0].nValue -= nTreasuryAmount;
         coinbaseTx.vout.push_back(CTxOut(nTreasuryAmount, chainparams.GetFoundersRewardScriptAtHeight(nHeight)));
+        
+        // Update coinbase transaction with additional info about masternode payments,
+        // get some info back to pass to getblocktemplate
+        FillBlockPayments(coinbaseTx, nHeight, blockReward, pblock->txoutMasternode);
+        // LogPrintf("CreateNewBlock -- nBlockHeight %d blockReward %lld txoutMasternode %s coinbaseTx %s",
+        //             nHeight, GetBlockSubsidy(nHeight, chainparams.GetConsensus()), pblock->txoutMasternode.ToString(), coinbaseTx.ToString());
     }
     
-    coinbaseTx.vout[0].nValue += nFees;
     coinbaseTx.vin[0].scriptSig = CScript() << nHeight << OP_0;
     pblock->vtx[0] = MakeTransactionRef(std::move(coinbaseTx));
     pblocktemplate->vchCoinbaseCommitment = GenerateCoinbaseCommitment(*pblock, pindexPrev, chainparams.GetConsensus());
@@ -200,7 +220,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     LogPrintf("CreateNewBlock(): block weight: %u txs: %u fees: %ld sigops %d\n", GetBlockWeight(*pblock), nBlockTx, nFees, nBlockSigOpsCost);
 
    arith_uint256 nonce;
-   if (IsHardForkActivated(pblock->nTime) && algo == ALGO_EQUIHASH) {
+   if (IsHardForkActivated(pblock->nTime) && (algo == ALGO_EQUIHASH || algo == ALGO_ZHASH)) {
 	 // Randomise nonce for new block format.
 	 nonce = UintToArith256(GetRandHash());
 	 // Clear the top and bottom 16 bits (for local use as thread flags and counters)

@@ -185,10 +185,11 @@ unsigned int CalculateNextWorkRequired(const CBlockIndex* pindexLast, int64_t nF
     return bnNew.GetCompact();
 }
 
-bool CheckEquihashSolution(const CEquihashBlockHeader *pblock, const CChainParams& params)
+bool CheckEquihashSolution(const CEquihashBlockHeader *pblock, const CChainParams& params, bool fisZhash)
 {
-    unsigned int n = params.EquihashN();
-    unsigned int k = params.EquihashK();
+    // if fisZhash is true, this is a Zhash Block, otherwhise Equihash.
+    unsigned int n = fisZhash ? params.ZhashN() : params.EquihashN();
+    unsigned int k = fisZhash ? params.ZhashK() : params.EquihashK();
 
     // Hash state
     crypto_generichash_blake2b_state state;
@@ -216,7 +217,7 @@ bool CheckEquihashSolution(const CBlockHeader *pblock, const CChainParams& param
 {
     CEquihashBlockHeader pequihashblock;
     pequihashblock = pblock->GetEquihashBlockHeader();
-    return CheckEquihashSolution(&pequihashblock, params);
+    return CheckEquihashSolution(&pequihashblock, params, pblock->GetAlgo() == ALGO_ZHASH);
 }
 
 bool CheckProofOfWork(uint256 hash, unsigned int nBits, const Consensus::Params& params, uint8_t algo)
@@ -262,7 +263,7 @@ bool CheckProofOfWork(const CBlockHeader& block, const Consensus::Params& params
                      params.nAuxpowChainId, block.nVersion);
 
     /* If there is no auxpow, just check the block hash.  */
-    if (!block.auxpowequihash && !block.auxpowdefault)
+    if (!block.auxpow)
     {
         if (block.IsAuxpow())
             return error("%s : no auxpow on block with auxpow version",
@@ -270,12 +271,12 @@ bool CheckProofOfWork(const CBlockHeader& block, const Consensus::Params& params
         
         if(hardfork)
         {
-            if(nAlgo == ALGO_EQUIHASH)
+            if(nAlgo == ALGO_EQUIHASH || nAlgo == ALGO_ZHASH)
             {
                 // Check Equihash solution
                 if (!CheckEquihashSolution(&block, Params())) {
                     ehsolutionvalid = false;
-                    return error("%s: non-AUX proof of work : bad Equihash solution", __func__);
+                    return error("%s: non-AUX proof of work : bad %s solution", __func__, GetAlgoName(nAlgo));
                 }
                 
                 // Check the header
@@ -312,78 +313,48 @@ bool CheckProofOfWork(const CBlockHeader& block, const Consensus::Params& params
     if(!hardfork)
         return error("%s : Found AuxPOW! - AuxPOW not valid yet, It will be activated with the Hardfork.", __func__);
 
-    if(nAlgo == ALGO_EQUIHASH)
+    if(nAlgo == ALGO_EQUIHASH || nAlgo == ALGO_ZHASH)
     {
         if (!block.IsAuxpow())
             return error("%s : auxpow on block with non-auxpow version", __func__);
-        
-        if (block.auxpowdefault)
-            return error("%s : wrong auxpow configuration. Expected auxpowequihash, got defaultauxpow", __func__);
 
         /* Temporary check:  Disallow parent blocks with auxpow version.  This is
            for compatibility with the old client.  */
         /* FIXME: Remove this check with a hardfork later on.  */
-        if (block.auxpowequihash->getParentBlock().IsAuxpow())
+        if (block.auxpow->getEquihashParentBlock().IsAuxpow())
             return error("%s : auxpow parent block has auxpow version", __func__);
 
-        if (!block.auxpowequihash->check(block.GetHash(), block.GetChainId(), params))
+        if (!block.auxpow->check(block.GetHash(), block.GetChainId(), params))
             return error("%s : AUX POW is not valid", __func__);
 
-        if(hardfork)
-        {
-            // Check Equihash solution
-            if (!CheckEquihashSolution(&block.auxpowequihash->getParentBlock(), Params())) {
-                ehsolutionvalid = false;
-                return error("%s: AUX proof of work - Equihash solution failed. (bad Equihash solution)", __func__);
-            }
-            
-            // Check the header
-            // Also check the Block Header after Equihash solution check.
-            if (!CheckProofOfWork(block.auxpowequihash->getParentBlockHash(), block.nBits, params, nAlgo))
-                return error("%s : AUX proof of work failed (Algo : %s)", __func__, GetAlgoName(nAlgo));
+        // Check Equihash solution
+        if (!CheckEquihashSolution(&block.auxpow->getEquihashParentBlock(), Params(), nAlgo == ALGO_ZHASH)) {
+            ehsolutionvalid = false;
+            return error("%s: AUX proof of work - %s solution failed. (bad %s solution)", __func__, GetAlgoName(nAlgo), GetAlgoName(nAlgo));
         }
-        else
-        {
-            // Equihash is not allowed if hardfork is not activated.
-            return error("%s : Equihash not allowed, Hardfork is not activated.", __func__);
-        }
+        
+        // Check the header
+        // Also check the Block Header after Equihash solution check.
+        if (!CheckProofOfWork(block.auxpow->getParentBlockPoWHash(nAlgo), block.nBits, params, nAlgo))
+            return error("%s : AUX proof of work failed (Algo : %s)", __func__, GetAlgoName(nAlgo));
     }
     else
     {
         if (!block.IsAuxpow())
             return error("%s : auxpow on block with non-auxpow version", __func__);
-        
-        if (block.auxpowequihash)
-            return error("%s : wrong auxpow configuration. Expected defaultauxpow, got auxpowequihash", __func__);
 
         /* Temporary check:  Disallow parent blocks with auxpow version.  This is
            for compatibility with the old client.  */
         /* FIXME: Remove this check with a hardfork later on.  */
-        if (block.auxpowdefault->getParentBlock().IsAuxpow())
+        if (block.auxpow->getDefaultParentBlock().IsAuxpow())
             return error("%s : auxpow parent block has auxpow version", __func__);
 
-        if (!block.auxpowdefault->check(block.GetHash(), block.GetChainId(), params))
+        if (!block.auxpow->check(block.GetHash(), block.GetChainId(), params))
             return error("%s : AUX POW is not valid", __func__);
 
-        if(hardfork)
-        {
-            // Check the header
-            if (!CheckProofOfWork(block.auxpowdefault->getParentBlockPoWHash(nAlgo), block.nBits, params, nAlgo))
-                return error("%s : AUX proof of work failed (Algo : %s)", __func__, GetAlgoName(nAlgo));
-        }
-        else
-        {
-            if(nAlgo == ALGO_SHA256D)
-            {
-                // Check the header
-                if (!CheckProofOfWork(block.auxpowdefault->getParentBlockPoWHash(ALGO_SHA256D), block.nBits, params, ALGO_SHA256D))
-                        return error("%s : AUX proof of work failed (Algo : %s)", __func__, GetAlgoName(ALGO_SHA256D));
-            }
-            else
-            {
-                return error("%s : Algo %s not allowed because Hardfork is not activated.", __func__, GetAlgoName(nAlgo));
-            }
-        }
+        // Check the header
+        if (!CheckProofOfWork(block.auxpow->getParentBlockPoWHash(nAlgo), block.nBits, params, nAlgo))
+            return error("%s : AUX proof of work failed (Algo : %s)", __func__, GetAlgoName(nAlgo));
     }
 
     return true;
